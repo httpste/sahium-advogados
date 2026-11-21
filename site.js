@@ -1,104 +1,85 @@
-const topic = document.querySelector('#topic');
-const whatsapp = document.querySelector('#whatsapp');
-const generalMessage = 'Olá! Gostaria de informações sobre o atendimento da Sahium Advogados.';
+// Progressive enhancement: content is open and usable until this script runs.
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+document.querySelectorAll('.practice-list, .faq-list').forEach(group => {
+  const items = [...group.querySelectorAll('.t-acc')];
+  const setOpen = (item, open) => {
+    item.dataset.open = String(open);
+    item.querySelector('.t-acc-head').setAttribute('aria-expanded', String(open));
+    item.querySelector('.t-acc-panel').inert = !open;
+  };
+  items.forEach((item, index) => {
+    const button = item.querySelector('.t-acc-head');
+    button.disabled = false;
+    setOpen(item, group.classList.contains('practice-list') && index === 0);
+    button.addEventListener('click', () => {
+      const next = item.dataset.open !== 'true';
+      items.forEach(other => { if (other !== item) setOpen(other, false); });
+      setOpen(item, next);
+    });
+  });
+});
 
-function whatsappUrl(message) {
-  const url = new URL(whatsapp.href);
-  url.searchParams.set('text', message);
-  return url.href;
+const mobileMenu = document.querySelector('.mobile-menu');
+if (mobileMenu) {
+  const summary = mobileMenu.querySelector('summary');
+  mobileMenu.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && mobileMenu.open) {
+      mobileMenu.open = false;
+      summary.focus();
+    }
+  });
+  mobileMenu.querySelectorAll('a').forEach(link => {
+    link.addEventListener('click', () => { mobileMenu.open = false; });
+  });
+  document.addEventListener('click', event => {
+    if (mobileMenu.open && !mobileMenu.contains(event.target)) mobileMenu.open = false;
+  });
+  window.matchMedia('(min-width: 761px)').addEventListener('change', event => {
+    if (event.matches) mobileMenu.open = false;
+  });
 }
 
-function updateWhatsApp() {
-  const subject = topic.value;
-  const message = subject && subject !== 'Outros assuntos'
-    ? `Olá! Gostaria de informações sobre o atendimento em ${subject}.`
-    : generalMessage;
-  whatsapp.href = whatsappUrl(message);
+const topic = document.querySelector('#contact-topic');
+const whatsapp = document.querySelector('#whatsapp-link');
+const preview = document.querySelector('#message-preview');
+if (topic && whatsapp && preview) {
+  const messages = {
+    geral: 'Olá! Gostaria de informações sobre o atendimento da Sahium Advogados.',
+    cliente: 'Olá! Já sou cliente e gostaria de falar com a equipe sobre meu atendimento.',
+    debito: 'Olá! Gostaria de informações sobre como tratar de um débito condominial.',
+    outro: 'Olá! Gostaria de informações sobre o atendimento da Sahium Advogados.',
+  };
+  const update = () => {
+    const label = topic.options[topic.selectedIndex].textContent;
+    const message = messages[topic.value] || `Olá! Gostaria de informações sobre atendimento em ${label}.`;
+    const url = new URL('https://wa.me/5562993355808');
+    url.searchParams.set('text', message);
+    whatsapp.href = url.href;
+    preview.textContent = message;
+  };
+  const loadTopic = () => {
+    const wanted = new URLSearchParams(location.search).get('assunto');
+    if (wanted && [...topic.options].some(option => option.value === wanted)) topic.value = wanted;
+    update();
+  };
+  topic.addEventListener('change', update);
+  window.addEventListener('pageshow', loadTopic);
+  loadTopic();
 }
+// A shareable URL carries only the public subject, no client information.
+document.querySelectorAll('[data-contact-topic]').forEach(link => {
+  const url = new URL(link.href);
+  url.searchParams.set('assunto', link.dataset.contactTopic);
+  link.href = url.href;
+});
 
-topic.addEventListener('change', updateWhatsApp);
-document.querySelectorAll('[data-topic]').forEach((link) => {
+// Avoid focus being obscured by the sticky header when using in-page navigation.
+document.querySelectorAll('a[href^="#"]').forEach(link => {
   link.addEventListener('click', () => {
-    topic.value = link.dataset.topic;
-    updateWhatsApp();
+    const target = document.getElementById(link.hash.slice(1));
+    if (target && link.classList.contains('skip-link')) {
+      target.focus({ preventScroll: true });
+      target.scrollIntoView({ behavior: reducedMotion.matches ? 'instant' : 'smooth' });
+    }
   });
 });
-updateWhatsApp();
-
-const work = {
-  condominios: {
-    title: 'Assessoria para síndicos e administradoras',
-    text: 'Apoio em assembleias, convenções, regimentos internos e cobrança de taxas condominiais.',
-    topic: 'Direito Condominial',
-  },
-  imoveis: {
-    title: 'Contratos e regularização de imóveis',
-    text: 'Orientação em compra, venda, locação e regularização de imóveis, além de apoio na resolução de disputas.',
-    topic: 'Direito Imobiliário',
-  },
-  empresas: {
-    title: 'Assessoria jurídica para empresas',
-    text: 'Apoio na elaboração e revisão de contratos, na prevenção de conflitos e na representação em questões empresariais.',
-    topic: 'Advocacia de Negócios',
-  },
-};
-
-const workButtons = [...document.querySelectorAll('[data-work]')];
-const workHeading = document.querySelector('#work-heading');
-const workDescription = document.querySelector('#work-description');
-const workContact = document.querySelector('#work-contact');
-
-workButtons.forEach((button) => {
-  button.addEventListener('click', () => {
-    const item = work[button.dataset.work];
-    workButtons.forEach((choice) => choice.setAttribute('aria-pressed', String(choice === button)));
-    workHeading.textContent = item.title;
-    workDescription.textContent = item.text;
-    workContact.dataset.topic = item.topic;
-  });
-});
-
-const messages = {
-  geral: generalMessage,
-  condominios: 'Olá! Sou síndico(a) ou represento um condomínio e gostaria de informações sobre a assessoria condominial.',
-  imoveis: 'Olá! Gostaria de informações sobre atendimento para uma questão relacionada a um imóvel.',
-  empresas: 'Olá! Gostaria de informações sobre assessoria jurídica para minha empresa ou revisão de um contrato.',
-  debitos: 'Olá! Gostaria de saber como posso tratar da negociação de um débito condominial.',
-  acompanhamento: 'Olá! Já estou em atendimento com o escritório e gostaria de falar com a equipe sobre o andamento.',
-};
-
-const widget = document.querySelector('#mensagens');
-const widgetSummary = widget.querySelector('summary');
-const messageTopic = document.querySelector('#message-topic');
-const messagePreview = document.querySelector('#message-preview');
-const messageLink = document.querySelector('#message-link');
-let widgetOpener = widgetSummary;
-
-function updateMessage() {
-  const message = messages[messageTopic.value];
-  messagePreview.textContent = message;
-  messageLink.href = whatsappUrl(message);
-}
-
-function closeWidget() {
-  widget.open = false;
-  widgetOpener.focus();
-}
-
-widget.querySelector('.message-close').addEventListener('click', closeWidget);
-widgetSummary.addEventListener('click', () => { widgetOpener = widgetSummary; });
-widget.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape' && widget.open) closeWidget();
-});
-document.querySelectorAll('[data-open-message]').forEach((link) => {
-  link.addEventListener('click', (event) => {
-    event.preventDefault();
-    widgetOpener = link;
-    messageTopic.value = link.dataset.openMessage;
-    updateMessage();
-    widget.open = true;
-    messageTopic.focus();
-  });
-});
-messageTopic.addEventListener('change', updateMessage);
-updateMessage();

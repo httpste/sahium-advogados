@@ -5,6 +5,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../dist');
 const routes=['','atuacao','quem-somos','carla-sahium','jefferson-lopes','publicacoes','privacidade'];
+const production=process.env.SAHIUM_PRODUCTION==='1';
 
 test('All pages have semantics, metadata and usable local links/assets', async()=>{
   for(const route of routes){
@@ -41,12 +42,25 @@ test('Institutional content and actual contact routes survive migration',async()
   assert.match(jefferson,/24\.627/);assert.match(jefferson,/Coleta de resíduos/);
 });
 
-test('Preview remains unindexed and embeds no remote trackers or forms',async()=>{
+test('Indexing matches the build mode; no embedded remote trackers or forms',async()=>{
   for(const route of routes){
     const html=await fs.readFile(path.join(root,route,'index.html'),'utf8');
-    assert.match(html,/name="robots" content="noindex,nofollow"/);
+    assert.ok(html.includes(`name="robots" content="${production?'index,follow':'noindex,nofollow'}"`));
+    if(production){
+      const origin=process.env.SAHIUM_SITE_URL;
+      assert.ok(origin,'Production URL required');
+      const canonical=new URL(route?`${route}/`:'./',origin.endsWith('/')?origin:origin+'/').href;
+      assert.ok(html.includes(`rel="canonical" href="${canonical}"`));
+    }
     assert.doesNotMatch(html,/<(?:script|iframe)[^>]*src="https?:/);
     assert.doesNotMatch(html,/<form\b/);
   }
-  assert.match(await fs.readFile(path.join(root,'robots.txt'),'utf8'),/Disallow: \//);
+  const robots=await fs.readFile(path.join(root,'robots.txt'),'utf8');
+  if(production){
+    assert.match(robots,/Allow: \//);
+    assert.doesNotMatch(robots,/Disallow: \//);
+    const sitemap=await fs.readFile(path.join(root,'sitemap.xml'),'utf8');
+    assert.equal((sitemap.match(/<loc>/g)||[]).length,routes.length);
+    assert.ok(sitemap.includes(process.env.SAHIUM_SITE_URL));
+  }else assert.match(robots,/Disallow: \//);
 });

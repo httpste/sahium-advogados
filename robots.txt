@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://httpste.github.io/sahium-advogados/sitemap.xml

@@ -5,7 +5,8 @@
   "scripts": {
     "build": "node redesign/build.mjs",
     "preview": "node redesign/serve.mjs",
-    "check": "node --test redesign/check.test.mjs"
+    "check": "node --test redesign/check.test.mjs",
+    "prepare:pages": "node redesign/prepare-pages.mjs"
   },
   "engines": { "node": ">=22" }
 }
