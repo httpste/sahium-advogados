@@ -1,0 +1,11 @@
+{
+  "name": "sahium-redesign",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node redesign/build.mjs",
+    "preview": "node redesign/serve.mjs",
+    "check": "node --test redesign/check.test.mjs"
+  },
+  "engines": { "node": ">=22" }
+}
